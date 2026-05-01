@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  Home, Users, MessageSquare, Settings, Command, Zap, Brain,
-  Loader2, Play, Eye, EyeOff, Sparkles, Send, Radio
-} from "lucide-react";
+import { Home, Users, MessageSquare, Settings, Command, Brain, Loader2, Play, Eye, EyeOff, Sparkles, Send, Radio } from "lucide-react";
 
 const AGENTS_REGISTRY = [
   { id: 1, name: "Data Analyst Pro", role: "Analyze datasets", category: "Data" },
@@ -43,136 +40,73 @@ const AGENTS_REGISTRY = [
 type Tab = "dashboard" | "agents" | "chat" | "settings";
 
 export default function HomePage() {
-  var activeTab = "dashboard" as Tab;
-  var apiKey = "";
-  var showApiKey = false;
-  var keySaved = false;
-  var messages: {role: string, content: string}[] = [];
-  var input = "";
-  var isLoading = false;
-  var activeAgents: number[] = [];
-  var processingAgent: number | null = null;
-  var backendOnline = false;
-
-  const [state, setState] = useState({
-    activeTab: "dashboard" as Tab,
-    apiKey: "",
-    showApiKey: false,
-    keySaved: false,
-    messages: [] as {role: string, content: string}[],
-    input: "",
-    isLoading: false,
-    activeAgents: [] as number[],
-    processingAgent: null as number | null,
-    backendOnline: false,
-  });
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
+  const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeAgents, setActiveAgents] = useState<number[]>([]);
+  const [processingAgent, setProcessingAgent] = useState<number | null>(null);
+  const [backendOnline, setBackendOnline] = useState(false);
 
   useEffect(function() {
-    var savedKey = localStorage.getItem("dg_api_key");
-    if (savedKey) {
-      setState(function(s) { return {...s, apiKey: savedKey, keySaved: true}; });
-    }
-    // Check backend health
-    fetch("/api/godfather").then(function(r) { 
-      return r.json(); 
-    }).then(function(d) {
-      setState(function(s) { return {...s, backendOnline: true}; });
-    }).catch(function() {});
+    const savedKey = localStorage.getItem("dg_api_key");
+    if (savedKey) { setApiKey(savedKey); setKeySaved(true); }
+    fetch("/api/godfather").then(function(r) { return r.json(); }).then(function() { setBackendOnline(true); }).catch(function() {});
   }, []);
 
-  function setActiveTab(tab: Tab) {
-    setState(function(s) { return {...s, activeTab: tab}; });
-  }
-  
-  function setApiKey(val: string) {
-    setState(function(s) { return {...s, apiKey: val, keySaved: false}; });
-  }
-  
-  function setShowApiKey(val: boolean) {
-    setState(function(s) { return {...s, showApiKey: val}; });
-  }
-  
-  function setInput(val: string) {
-    setState(function(s) { return {...s, input: val}; });
-  }
-  
-  function setMessages(val: {role: string, content: string}[]) {
-    setState(function(s) { return {...s, messages: val}; });
-  }
-  
   function handleSaveApiKey() {
-    if (state.apiKey.trim()) {
-      localStorage.setItem("dg_api_key", state.apiKey.trim());
-      setState(function(s) { return {...s, keySaved: true}; });
-    }
+    if (apiKey.trim()) { localStorage.setItem("dg_api_key", apiKey.trim()); setKeySaved(true); }
   }
 
   async function launchAgent(agentId: number) {
-    if (!state.apiKey) return;
-    setState(function(s) { return {...s, processingAgent: agentId, activeAgents: [...s.activeAgents, agentId]}; });
-    setState(function(s) { 
-      return {...s, messages: [...s.messages, {role: "system", content: "Launching Agent " + agentId + "..."}}; 
-    });
+    if (!apiKey) return;
+    setProcessingAgent(agentId);
+    setActiveAgents(function(prev) { return [].concat(prev, [agentId]); });
+    setMessages(function(prev) { return [].concat(prev, [{role: "system", content: "Launching Agent " + agentId + "..."}]); });
 
     try {
-      var response = await fetch("/api/godfather", {
+      var resp = await fetch("/api/godfather", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          agentId: agentId,
-          task: "Execute your specialized task",
-          userApiKey: state.apiKey
-        })
+        body: JSON.stringify({agentId: agentId, task: "Execute your specialized task", userApiKey: apiKey})
       });
-      var data = await response.json();
-      
+      var data = await resp.json();
       if (data.success) {
-        setState(function(s) { 
-          return {...s, messages: [...s.messages, {role: "assistant", content: "[Agent " + agentId + "] " + data.response} }; 
-        });
+        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "[Agent " + agentId + "] " + data.response}]); });
       } else {
-        setState(function(s) { 
-          return {...s, messages: [...s.messages, {role: "assistant", content: "Error: " + data.error} }; 
-        });
+        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Error: " + data.error}]); });
       }
     } catch (e: any) {
-      setState(function(s) { 
-        return {...s, messages: [...s.messages, {role: "assistant", content: "Agent " + agentId + " launched (fallback mode)"}] }; 
-      });
+      setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Agent " + agentId + " launched (fallback mode)"}]); });
     } finally {
-      setState(function(s) { return {...s, processingAgent: null}; });
+      setProcessingAgent(null);
     }
   }
 
   async function sendMessage() {
-    if (!state.input.trim() || !state.apiKey) return;
-    var userMsg = state.input;
-    setState(function(s) { return {...s, input: "", messages: [...s.messages, {role: "user", content: userMsg}]}; });
-    setState(function(s) { return {...s, isLoading: true}; });
+    if (!input.trim() || !apiKey) return;
+    var userMsg = input;
+    setInput("");
+    setIsLoading(true);
+    setMessages(function(prev) { return [].concat(prev, [{role: "user", content: userMsg}]); });
 
     try {
-      var response = await fetch("/api/godfather", {
+      var resp = await fetch("/api/godfather", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          agentId: 1,
-          task: userMsg,
-          userApiKey: state.apiKey
-        })
+        body: JSON.stringify({agentId: 1, task: userMsg, userApiKey: apiKey})
       });
-      var data = await response.json();
-      
+      var data = await resp.json();
       if (data.success) {
-        setState(function(s) { 
-          return {...s, messages: [...s.messages, {role: "assistant", content: data.response}]}; 
-        });
+        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: data.response}]); });
       }
     } catch (e) {
-      setState(function(s) { 
-        return {...s, messages: [...s.messages, {role: "assistant", content: "Error sending message"}]}; 
-      });
+      setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Error sending message"}]); });
     } finally {
-      setState(function(s) { return {...s, isLoading: false}; });
+      setIsLoading(false);
     }
   }
 
@@ -185,14 +119,12 @@ export default function HomePage() {
           </div>
           <div>
             <h1 className="text-lg font-bold gold-gradient">Digital Godfather</h1>
-            <p className="text-xs text-gray-400">
-              {state.keySaved ? (state.backendOnline ? "Engine Online" : "Ready") : "No API Key"}
-            </p>
+            <p className="text-xs text-gray-400">{keySaved ? (backendOnline ? "Engine Online" : "Ready") : "No API Key"}</p>
           </div>
         </div>
       </header>
 
-      {state.activeTab === "dashboard" && (
+      {activeTab === "dashboard" && (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <motion.div className="glass-card p-4 text-center">
@@ -202,33 +134,30 @@ export default function HomePage() {
             </motion.div>
             <motion.div className="glass-card p-4 text-center">
               <Radio className="w-6 h-6 mx-auto mb-2 gold-accent" />
-              <p className="text-2xl font-bold">{state.activeAgents.length}</p>
+              <p className="text-2xl font-bold">{activeAgents.length}</p>
               <p className="text-xs text-gray-400">Active</p>
             </motion.div>
             <motion.div className="glass-card p-4 text-center">
               <Sparkles className="w-6 h-6 mx-auto mb-2 gold-accent" />
-              <p className="text-2xl font-bold">{state.backendOnline ? "ON" : "OFF"}</p>
+              <p className="text-2xl font-bold">{backendOnline ? "ON" : "OFF"}</p>
               <p className="text-xs text-gray-400">Engine</p>
             </motion.div>
           </div>
-
           <div className="glass-card p-4">
             <h3 className="font-semibold mb-3">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={function() { setActiveTab("agents"); }} className="glass-card-hover p-3 flex items-center gap-2 text-left">
-                <Brain className="w-5 h-5 gold-accent" />
-                <span className="text-sm">Launch Agent</span>
+                <Brain className="w-5 h-5 gold-accent" /><span className="text-sm">Launch Agent</span>
               </button>
               <button onClick={function() { setActiveTab("chat"); }} className="glass-card-hover p-3 flex items-center gap-2 text-left">
-                <MessageSquare className="w-5 h-5 gold-accent" />
-                <span className="text-sm">Start Chat</span>
+                <MessageSquare className="w-5 h-5 gold-accent" /><span className="text-sm">Start Chat</span>
               </button>
             </div>
           </div>
         </>
       )}
 
-      {state.activeTab === "agents" && (
+      {activeTab === "agents" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Agent Registry ({AGENTS_REGISTRY.length})</h3>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
@@ -239,13 +168,8 @@ export default function HomePage() {
                     <p className="font-medium">{agent.name}</p>
                     <p className="text-xs text-gray-400">{agent.role}</p>
                   </div>
-                  <button
-                    onClick={function() { launchAgent(agent.id); }}
-                    disabled={state.processingAgent === agent.id || !state.apiKey}
-                    className="btn-primary text-sm flex items-center gap-2"
-                  >
-                    {state.processingAgent === agent.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    Launch
+                  <button onClick={function() { launchAgent(agent.id); }} disabled={processingAgent === agent.id || !apiKey} className="btn-primary text-sm flex items-center gap-2">
+                    {processingAgent === agent.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}Launch
                   </button>
                 </div>
               );
@@ -254,62 +178,46 @@ export default function HomePage() {
         </div>
       )}
 
-      {state.activeTab === "chat" && (
+      {activeTab === "chat" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Chat</h3>
           <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto">
-            {state.messages.map(function(msg: any, i: number) {
-              return (
-                <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}>
-                  <p className="text-sm">{msg.content}</p>
-                </div>
-              );
+            {messages.map(function(msg, i) {
+              return <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}><p className="text-sm">{msg.content}</p></div>;
             })}
-            {state.isLoading && <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Processing...</span></div>}
+            {isLoading && <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Processing...</span></div>}
           </div>
           <div className="flex gap-2">
-            <input value={state.input} onChange={function(e) { setInput(e.target.value); }} placeholder={state.apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!state.apiKey} />
-            <button onClick={sendMessage} disabled={!state.input.trim() || state.isLoading || !state.apiKey} className="btn-primary">
-              <Send className="w-5 h-5" />
-            </button>
+            <input value={input} onChange={function(e) { setInput(e.target.value); }} placeholder={apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!apiKey} />
+            <button onClick={sendMessage} disabled={!input.trim() || isLoading || !apiKey} className="btn-primary"><Send className="w-5 h-5" /></button>
           </div>
         </div>
       )}
 
-      {state.activeTab === "settings" && (
+      {activeTab === "settings" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Settings</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Gemini API Key</label>
               <div className="flex gap-2">
-                <input type={state.showApiKey ? "text" : "password"} value={state.apiKey} onChange={function(e) { setApiKey(e.target.value); }} placeholder="Enter API key..." className="flex-1 text-sm" />
-                <button onClick={function() { setShowApiKey(!state.showApiKey); }} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
-                  {state.showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={function(e) { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
+                <button onClick={function() { setShowApiKey(!showApiKey); }} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               <a href="https://aistudio.google.com/apikey" target="_blank" className="text-xs text-blue-400 mt-2 block">Get free API key</a>
-              <button onClick={handleSaveApiKey} disabled={!state.apiKey.trim()} className="btn-primary w-full mt-3">
-                {state.keySaved ? "Saved" : "Save Key"}
-              </button>
+              <button onClick={handleSaveApiKey} disabled={!apiKey.trim()} className="btn-primary w-full mt-3">{keySaved ? "Saved" : "Save Key"}</button>
             </div>
           </div>
         </div>
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 glass-card border-t-0 rounded-t-3xl p-2 flex justify-around lg:hidden">
-        <button onClick={function() { setActiveTab("dashboard"); }} className={"p-3 " + (state.activeTab === "dashboard" ? "gold-accent" : "text-gray-400")}>
-          <Home className="w-6 h-6" />
-        </button>
-        <button onClick={function() { setActiveTab("agents"); }} className={"p-3 " + (state.activeTab === "agents" ? "gold-accent" : "text-gray-400")}>
-          <Users className="w-6 h-6" />
-        </button>
-        <button onClick={function() { setActiveTab("chat"); }} className={"p-3 " + (state.activeTab === "chat" ? "gold-accent" : "text-gray-400")}>
-          <MessageSquare className="w-6 h-6" />
-        </button>
-        <button onClick={function() { setActiveTab("settings"); }} className={"p-3 " + (state.activeTab === "settings" ? "gold-accent" : "text-gray-400")}>
-          <Settings className="w-6 h-6" />
-        </button>
+        <button onClick={function() { setActiveTab("dashboard"); }} className={"p-3 " + (activeTab === "dashboard" ? "gold-accent" : "text-gray-400")}><Home className="w-6 h-6" /></button>
+        <button onClick={function() { setActiveTab("agents"); }} className={"p-3 " + (activeTab === "agents" ? "gold-accent" : "text-gray-400")}><Users className="w-6 h-6" /></button>
+        <button onClick={function() { setActiveTab("chat"); }} className={"p-3 " + (activeTab === "chat" ? "gold-accent" : "text-gray-400")}><MessageSquare className="w-6 h-6" /></button>
+        <button onClick={function() { setActiveTab("settings"); }} className={"p-3 " + (activeTab === "settings" ? "gold-accent" : "text-gray-400")}><Settings className="w-6 h-6" /></button>
       </nav>
     </div>
   );
