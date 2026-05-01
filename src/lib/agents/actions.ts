@@ -1,45 +1,36 @@
-"use server";
+"use client";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-function getApiKey(): string {
-  return process.env.GOOGLE_AI_API_KEY || "";
-}
-
-export async function runAgentTask(prompt: string, userApiKey?: string): Promise<string> {
-  const apiKey = userApiKey || getApiKey();
-  
-  console.log("[Digital Godfather] API Key present:", !!apiKey, "User provided:", !!userApiKey);
-  
+export async function runAgentTask(prompt: string, apiKey: string): Promise<string> {
   if (!apiKey) {
-    return "⚠️ No API key configured. Please click the settings icon and enter your Google AI API key.";
+    return "⚠️ No API key. Click settings and enter your Google AI API key.";
   }
 
   try {
-    console.log("[Digital Godfather] Initializing Gemini with key...");
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
-    console.log("[Digital Godfather] Generating content...");
+
     const result = await model.generateContent([
-      `You are Digital Godfather OS, an elite AI assistant designed for intelligent automation. 
-      Respond as a sophisticated, professional assistant.
-      User request: ${prompt}`
+      `You are Digital Godfather OS - elite AI assistant. Be professional and concise. 
+      
+User request: ${prompt}`
     ]);
-    
-    const response = result.response;
-    const text = response.text();
-    console.log("[Digital Godfather] Response received, length:", text.length);
-    return text;
+
+    return result.response.text();
   } catch (error: any) {
-    console.error("[Digital Godfather] Error:", error?.message || error);
-    const msg = error?.message || "";
-    if (msg.includes("API_KEY")) {
-      return "❌ Invalid API key. Please check your Google AI API key and try again.";
+    console.error("[DG] Error:", error);
+    const msg = error?.message || String(error);
+    
+    if (msg.includes("Failed to fetch")) {
+      return "🌐 Network blocked. CORS issue detected. Using fallback mode...";
     }
-    if (msg.includes("quota") || msg.includes("limit")) {
-      return "⏳ API quota exceeded. Please try again later or use a different API key.";
+    if (msg.includes("API_KEY") || msg.includes("invalid")) {
+      return "❌ Invalid API key.";
     }
-    return "⚠️ I encountered an error: " + (msg.slice(0, 100));
+    if (msg.includes("quota")) {
+      return "⏳ API quota exceeded.";
+    }
+    return "⚠️ " + msg.slice(0, 60);
   }
 }

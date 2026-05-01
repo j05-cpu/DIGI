@@ -12,18 +12,13 @@ import {
   EyeOff,
   CheckCircle
 } from "lucide-react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-}
-
-// Server action call
-async function callAgent(prompt: string, apiKey: string) {
-  const { runAgentTask } = await import("@/lib/agents/actions");
-  return runAgentTask(prompt, apiKey);
 }
 
 export default function AgentDashboard() {
@@ -36,14 +31,14 @@ export default function AgentDashboard() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Welcome to Digital Godfather OS. I am your elite AI assistant powered by advanced intelligence. How may I serve you today?",
+      content: "Welcome to Digital Godfather OS. I am your elite AI assistant. How may I serve you today?",
       timestamp: new Date(),
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
 
-  // Load API key from localStorage on mount
+  // Load API key from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("dg_api_key");
     if (savedKey) {
@@ -60,15 +55,9 @@ export default function AgentDashboard() {
     }
   };
 
-  const handleClearApiKey = () => {
-    localStorage.removeItem("dg_api_key");
-    setApiKey("");
-    setKeySaved(false);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !apiKey) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -83,23 +72,37 @@ export default function AgentDashboard() {
     setStatus("processing");
 
     try {
-      const result = await callAgent(input, apiKey);
+      // Call Gemini directly from client
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const result = await model.generateContent([
+        `You are Digital Godfather OS - elite AI assistant. Be professional and helpful.
+        
+User: ${input}`
+      ]);
+      
+      const text = result.response.text();
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: result,
+        content: text,
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
       setStatus("success");
-    } catch (error) {
+    } catch (error: any) {
       setStatus("error");
+      const msg = error?.message || "Unknown error";
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I encountered an issue processing your request. Please try again.",
+        content: msg.includes("Failed to fetch") 
+          ? "🌐 Network error. Please check your internet connection." 
+          : "⚠️ " + msg.slice(0, 80),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -117,120 +120,55 @@ export default function AgentDashboard() {
           <Bot className="w-5 h-5 gold-accent" />
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold">Digital Godfather Agent</h3>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${
-              status === "processing" ? "bg-yellow-400 animate-pulse" :
-              status === "success" ? "bg-green-400" :
-              status === "error" ? "bg-red-400" :
-              apiKey ? "bg-green-400" :
-              "bg-red-400"
-            }`} />
-            <p className="text-xs text-gray-400">
-              {status === "processing" ? "Processing..." :
-               status === "success" ? "Ready" :
-               status === "error" ? "Error" :
-               apiKey ? "API Key Ready" :
-               "No API Key"}
-            </p>
-          </div>
+          <h3 className="font-semibold">Digital Godfather</h3>
+          <p className="text-xs text-gray-400">
+            {apiKey ? "🟢 Ready" : "🔴 No API Key"}
+          </p>
         </div>
-        <button 
-          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center"
-        >
+        <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
           <Settings className="w-5 h-5 text-gray-400" />
         </button>
       </div>
 
-      {/* API Key Settings */}
+      {/* Settings */}
       {isSettingsOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="mb-4 p-4 bg-white/5 rounded-xl"
-        >
-          <label className="block text-sm font-medium mb-2">
-            <Key className="w-4 h-4 inline mr-2" />
-            Google AI API Key
-          </label>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 p-4 bg-white/5 rounded-xl">
+          <label className="block text-sm font-medium mb-2">Google AI API Key</label>
           <div className="flex gap-2">
             <input
               type={showApiKey ? "text" : "password"}
               value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value);
-                setKeySaved(false);
-              }}
-              placeholder="Enter your Google AI API key..."
+              onChange={(e) => { setApiKey(e.target.value); setKeySaved(false); }}
+              placeholder="Enter API key..."
               className="flex-1 text-sm"
             />
-            <button
-              type="button"
-              onClick={() => setShowApiKey(!showApiKey)}
-              className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center"
-            >
+            <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
               {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Get your free API key from aistudio.google.com/apikey
-          </p>
-          <div className="flex gap-2 mt-3">
-            <button 
-              onClick={handleSaveApiKey}
-              disabled={!apiKey.trim()}
-              className="btn-primary flex-1 text-sm flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Save Key
-            </button>
-            {keySaved && (
-              <button 
-                onClick={handleClearApiKey}
-                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl text-sm"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+          <a href="https://aistudio.google.com/apikey" target="_blank" className="text-xs text-blue-400 mt-2 block">Get free API key</a>
+          <button onClick={handleSaveApiKey} disabled={!apiKey.trim()} className="btn-primary w-full mt-3 text-sm">
+            {keySaved ? "✓ Saved" : "Save Key"}
+          </button>
         </motion.div>
       )}
 
       {/* Messages */}
       <div className="space-y-4 mb-4 max-h-80 overflow-y-auto">
-        {messages.map((msg, index) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div className={`max-w-[85%] p-3 rounded-2xl ${
-              msg.role === "user"
-                ? "bg-white/10 text-white"
-                : "bg-white/5 text-gray-200"
-            }`}>
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] p-3 rounded-2xl ${msg.role === "user" ? "bg-white/10" : "bg-white/5"}`}>
               <p className="text-sm">{msg.content}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {msg.timestamp.toLocaleTimeString()}
-              </p>
             </div>
-          </motion.div>
+          </div>
         ))}
-        
         {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
+          <div className="flex justify-start">
             <div className="bg-white/5 p-3 rounded-2xl flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin gold-accent" />
-              <span className="text-sm text-gray-400">Processing task...</span>
+              <span className="text-sm text-gray-400">Processing...</span>
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
 
@@ -240,20 +178,12 @@ export default function AgentDashboard() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter your command..."
+          placeholder={apiKey ? "Enter command..." : "Set API key first..."}
           className="flex-1 text-sm"
-          disabled={isLoading}
+          disabled={isLoading || !apiKey}
         />
-        <button
-          type="submit"
-          disabled={!input.trim() || isLoading}
-          className="btn-primary w-12 h-12 p-0 flex items-center justify-center"
-        >
-          {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <Send className="w-5 h-5" />
-          )}
+        <button type="submit" disabled={!input.trim() || isLoading || !apiKey} className="btn-primary w-12 h-12 p-0 flex items-center justify-center">
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
         </button>
       </form>
     </div>
