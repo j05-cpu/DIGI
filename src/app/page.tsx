@@ -64,7 +64,7 @@ export default function HomePage() {
   async function launchAgent(agentId: number) {
     if (!apiKey) return;
     setProcessingAgent(agentId);
-    setActiveAgents(function(prev) { return [].concat(prev, [agentId]); });
+    setActiveAgents(function(prev) { return (prev as number[]).concat([agentId]); });
     setMessages(function(prev) { return [].concat(prev, [{role: "system", content: "Launching Agent " + agentId + "..."}]); });
 
     try {
