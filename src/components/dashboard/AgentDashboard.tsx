@@ -9,9 +9,9 @@ import {
   Settings,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
+  CheckCircle
 } from "lucide-react";
-import { runAgentTask } from "@/lib/agents/actions";
 
 interface Message {
   id: string;
@@ -20,11 +20,18 @@ interface Message {
   timestamp: Date;
 }
 
+// Server action call
+async function callAgent(prompt: string, apiKey: string) {
+  const { runAgentTask } = await import("@/lib/agents/actions");
+  return runAgentTask(prompt, apiKey);
+}
+
 export default function AgentDashboard() {
   const [input, setInput] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -39,14 +46,24 @@ export default function AgentDashboard() {
   // Load API key from localStorage on mount
   useEffect(() => {
     const savedKey = localStorage.getItem("dg_api_key");
-    if (savedKey) setApiKey(savedKey);
+    if (savedKey) {
+      setApiKey(savedKey);
+      setKeySaved(true);
+    }
   }, []);
 
   const handleSaveApiKey = () => {
     if (apiKey.trim()) {
       localStorage.setItem("dg_api_key", apiKey.trim());
+      setKeySaved(true);
       setIsSettingsOpen(false);
     }
+  };
+
+  const handleClearApiKey = () => {
+    localStorage.removeItem("dg_api_key");
+    setApiKey("");
+    setKeySaved(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +83,7 @@ export default function AgentDashboard() {
     setStatus("processing");
 
     try {
-      const result = await runAgentTask(input, apiKey || undefined);
+      const result = await callAgent(input, apiKey);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -131,7 +148,6 @@ export default function AgentDashboard() {
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
           className="mb-4 p-4 bg-white/5 rounded-xl"
         >
           <label className="block text-sm font-medium mb-2">
@@ -142,7 +158,10 @@ export default function AgentDashboard() {
             <input
               type={showApiKey ? "text" : "password"}
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setKeySaved(false);
+              }}
               placeholder="Enter your Google AI API key..."
               className="flex-1 text-sm"
             />
@@ -155,14 +174,26 @@ export default function AgentDashboard() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Get your free API key from Google AI Studio
+            Get your free API key from aistudio.google.com/apikey
           </p>
-          <button 
-            onClick={handleSaveApiKey}
-            className="btn-primary w-full mt-3 text-sm"
-          >
-            Save API Key
-          </button>
+          <div className="flex gap-2 mt-3">
+            <button 
+              onClick={handleSaveApiKey}
+              disabled={!apiKey.trim()}
+              className="btn-primary flex-1 text-sm flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Save Key
+            </button>
+            {keySaved && (
+              <button 
+                onClick={handleClearApiKey}
+                className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl text-sm"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </motion.div>
       )}
 
