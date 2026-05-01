@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "@google/generative-ai": "^0.21.0",
+    "langchain": "^0.3.0",
     "framer-motion": "^11.18.0",
     "lucide-react": "^0.469.0",
     "next": "^14.2.21",
@@ -27,5 +28,8 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "@langchain/core": "^0.3.0"
   }
 }
