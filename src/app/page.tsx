@@ -39,12 +39,14 @@ const AGENTS_REGISTRY = [
 
 type Tab = "dashboard" | "agents" | "chat" | "settings";
 
+interface Msg { role: string; content: string; }
+
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
-  const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [activeAgents, setActiveAgents] = useState<number[]>([]);
@@ -52,9 +54,9 @@ export default function HomePage() {
   const [backendOnline, setBackendOnline] = useState(false);
 
   useEffect(function() {
-    const savedKey = localStorage.getItem("dg_api_key");
+    var savedKey = localStorage.getItem("dg_api_key");
     if (savedKey) { setApiKey(savedKey); setKeySaved(true); }
-    fetch("/api/godfather").then(function(r) { return r.json(); }).then(function() { setBackendOnline(true); }).catch(function() {});
+    fetch("/api/godfather").then(function(r: any) { return r.json(); }).then(function() { setBackendOnline(true); }).catch(function() {});
   }, []);
 
   function handleSaveApiKey() {
@@ -64,8 +66,12 @@ export default function HomePage() {
   async function launchAgent(agentId: number) {
     if (!apiKey) return;
     setProcessingAgent(agentId);
-    setActiveAgents(function(prev) { var newArr = prev.slice(); newArr.push(agentId); return newArr; });
-    setMessages(function(prev) { return [].concat(prev, [{role: "system", content: "Launching Agent " + agentId + "..."}]); });
+    var newActive = activeAgents.slice();
+    newActive.push(agentId);
+    setActiveAgents(newActive);
+    var newMsgs: Msg[] = messages.slice();
+    newMsgs.push({role: "system", content: "Launching Agent " + agentId + "..."});
+    setMessages(newMsgs);
 
     try {
       var resp = await fetch("/api/godfather", {
@@ -75,12 +81,18 @@ export default function HomePage() {
       });
       var data = await resp.json();
       if (data.success) {
-        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "[Agent " + agentId + "] " + data.response}]); });
+        var copyMsgs = messages.slice();
+        copyMsgs.push({role: "assistant", content: "[Agent " + agentId + "] " + data.response});
+        setMessages(copyMsgs);
       } else {
-        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Error: " + data.error}]); });
+        var errMsgs = messages.slice();
+        errMsgs.push({role: "assistant", content: "Error: " + data.error});
+        setMessages(errMsgs);
       }
     } catch (e: any) {
-      setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Agent " + agentId + " launched (fallback mode)"}]); });
+      var failMsgs = messages.slice();
+      failMsgs.push({role: "assistant", content: "Agent " + agentId + " launched (fallback mode)"});
+      setMessages(failMsgs);
     } finally {
       setProcessingAgent(null);
     }
@@ -91,7 +103,9 @@ export default function HomePage() {
     var userMsg = input;
     setInput("");
     setIsLoading(true);
-    setMessages(function(prev) { return [].concat(prev, [{role: "user", content: userMsg}]); });
+    var userMsgs = messages.slice();
+    userMsgs.push({role: "user", content: userMsg});
+    setMessages(userMsgs);
 
     try {
       var resp = await fetch("/api/godfather", {
@@ -101,10 +115,14 @@ export default function HomePage() {
       });
       var data = await resp.json();
       if (data.success) {
-        setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: data.response}]); });
+        var respMsgs = messages.slice();
+        respMsgs.push({role: "assistant", content: data.response});
+        setMessages(respMsgs);
       }
     } catch (e) {
-      setMessages(function(prev) { return [].concat(prev, [{role: "assistant", content: "Error sending message"}]); });
+      var errMsgs = messages.slice();
+      errMsgs.push({role: "assistant", content: "Error sending message"});
+      setMessages(errMsgs);
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +179,7 @@ export default function HomePage() {
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Agent Registry ({AGENTS_REGISTRY.length})</h3>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {AGENTS_REGISTRY.map(function(agent) {
+            {AGENTS_REGISTRY.map(function(agent: any) {
               return (
                 <div key={agent.id} className="glass-card-hover p-3 flex items-center justify-between">
                   <div>
@@ -182,13 +200,13 @@ export default function HomePage() {
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Chat</h3>
           <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto">
-            {messages.map(function(msg, i) {
+            {messages.map(function(msg: any, i: number) {
               return <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}><p className="text-sm">{msg.content}</p></div>;
             })}
             {isLoading && <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Processing...</span></div>}
           </div>
           <div className="flex gap-2">
-            <input value={input} onChange={function(e) { setInput(e.target.value); }} placeholder={apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!apiKey} />
+            <input value={input} onChange={function(e: any) { setInput(e.target.value); }} placeholder={apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!apiKey} />
             <button onClick={sendMessage} disabled={!input.trim() || isLoading || !apiKey} className="btn-primary"><Send className="w-5 h-5" /></button>
           </div>
         </div>
@@ -201,7 +219,7 @@ export default function HomePage() {
             <div>
               <label className="block text-sm font-medium mb-2">Gemini API Key</label>
               <div className="flex gap-2">
-                <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={function(e) { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
+                <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={function(e: any) { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
                 <button onClick={function() { setShowApiKey(!showApiKey); }} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
