@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Send, 
   Bot, 
   Loader2, 
-  CheckCircle2, 
-  AlertCircle,
-  Sparkles
+  Settings,
+  Key,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { runAgentTask } from "@/lib/agents/actions";
 
@@ -21,6 +22,9 @@ interface Message {
 
 export default function AgentDashboard() {
   const [input, setInput] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -31,6 +35,19 @@ export default function AgentDashboard() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem("dg_api_key");
+    if (savedKey) setApiKey(savedKey);
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem("dg_api_key", apiKey.trim());
+      setIsSettingsOpen(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +66,7 @@ export default function AgentDashboard() {
     setStatus("processing");
 
     try {
-      const result = await runAgentTask(input);
+      const result = await runAgentTask(input, apiKey || undefined);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -89,18 +106,65 @@ export default function AgentDashboard() {
               status === "processing" ? "bg-yellow-400 animate-pulse" :
               status === "success" ? "bg-green-400" :
               status === "error" ? "bg-red-400" :
-              "bg-gray-400"
+              apiKey ? "bg-green-400" :
+              "bg-red-400"
             }`} />
             <p className="text-xs text-gray-400">
               {status === "processing" ? "Processing..." :
                status === "success" ? "Ready" :
                status === "error" ? "Error" :
-               "Online"}
+               apiKey ? "API Key Ready" :
+               "No API Key"}
             </p>
           </div>
         </div>
-        <Sparkles className="w-5 h-5 gold-accent" />
+        <button 
+          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center"
+        >
+          <Settings className="w-5 h-5 text-gray-400" />
+        </button>
       </div>
+
+      {/* API Key Settings */}
+      {isSettingsOpen && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mb-4 p-4 bg-white/5 rounded-xl"
+        >
+          <label className="block text-sm font-medium mb-2">
+            <Key className="w-4 h-4 inline mr-2" />
+            Google AI API Key
+          </label>
+          <div className="flex gap-2">
+            <input
+              type={showApiKey ? "text" : "password"}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your Google AI API key..."
+              className="flex-1 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setShowApiKey(!showApiKey)}
+              className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center"
+            >
+              {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Get your free API key from Google AI Studio
+          </p>
+          <button 
+            onClick={handleSaveApiKey}
+            className="btn-primary w-full mt-3 text-sm"
+          >
+            Save API Key
+          </button>
+        </motion.div>
+      )}
 
       {/* Messages */}
       <div className="space-y-4 mb-4 max-h-80 overflow-y-auto">

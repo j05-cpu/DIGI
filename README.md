@@ -9,7 +9,7 @@ Digital Godfather OS is a premium mobile-first AI agent platform that combines e
 ## Features
 
 - **Glassmorphism UI**: Premium mobile-optimized interface with smooth animations
-- **AI Agent Integration**: Powered by Google Gemini 1.5 Flash
+- **Your Own API Key**: Users can bring their own Google AI API key
 - **Real-time Processing**: Server Actions for instant agent responses
 - **White-Label Ready**: Complete branding customization support
 
@@ -19,15 +19,16 @@ Digital Godfather OS is a premium mobile-first AI agent platform that combines e
 # Install dependencies
 npm install
 
-# Copy environment configuration
-cp .env.example .env.local
-
-# Add your Google AI API key to .env.local
-GOOGLE_AI_API_KEY=your_api_key_here
-
 # Run development server
 npm run dev
 ```
+
+## API Key Setup
+
+1. Open the app and click the settings gear icon
+2. Enter your Google AI API key (get free key from Google AI Studio)
+3. Click "Save API Key"
+4. The agent is now ready to use!
 
 ## Tech Stack
 

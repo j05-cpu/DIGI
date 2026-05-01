@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --glass-100: rgba(255, 255, 255, 0.08);
@@ -86,7 +88,7 @@ body {
     rgba(212, 175, 55, 0.1) 50%,
     transparent 100%
   );
-  background-size: 200% 100%;
+  background-size: 200% 200%;
   animation: shimmer 3s linear infinite;
 }
 
