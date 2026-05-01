@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Home, Users, MessageSquare, Settings, Command, Zap, Brain,
-  Loader2, Play, Plus, X, Eye, EyeOff, Sparkles
+  Loader2, Play, Eye, EyeOff, Sparkles, Send
 } from "lucide-react";
 
 // 30 Professional Agents
@@ -22,7 +22,7 @@ const AGENTS_REGISTRY = [
   { id: 11, name: "Social Media Manager", role: "Manage social", category: "Marketing" },
   { id: 12, name: "Email Writer", role: "Write emails", category: "Content" },
   { id: 13, name: "Translator", role: "Translate text", category: "Content" },
-  { id: 14, name: " QA Tester", role: "Test apps", category: "Dev" },
+  { id: 14, name: "QA Tester", role: "Test apps", category: "Dev" },
   { id: 15, name: "Doc Writer", role: "Write docs", category: "Content" },
   { id: 16, name: "Sales Closer", role: "Close deals", category: "Sales" },
   { id: 17, name: "Brand Strategist", role: "Strategy", category: "Marketing" },
@@ -67,23 +67,28 @@ export default function HomePage() {
   };
 
   const launchAgent = async (agentId: number) => {
+    if (!apiKey) return;
     setProcessingAgent(agentId);
     setActiveAgents(prev => [...prev, agentId]);
-    
-    // Simulate CrewAI task with Gemini
+
+    const prompt = "Launch agent " + agentId + ". Execute task and respond with confirmation.";
+
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Launch agent ${agentId}. Execute task and respond with confirmation.` } }]
-        })
-      });
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        }
+      );
       const data = await response.json();
       const result = data.candidates?.[0]?.content?.parts?.[0]?.text || "Agent launched!";
-      setMessages(prev => [...prev, { role: "assistant", content: `[Agent ${agentId}] ${result}` }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "[Agent " + agentId + "] " + result }]);
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: "assistant", content: `Agent ${agentId} launched (simulation mode)` }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Agent " + agentId + " launched (simulation mode)" }]);
     } finally {
       setProcessingAgent(null);
     }
@@ -95,14 +100,19 @@ export default function HomePage() {
     setInput("");
     setIsLoading(true);
 
+    const prompt = "You are Digital Godfather OS. Respond professionally. User: " + input;
+
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `You are Digital Godfather OS. Respond professionally. User: ${input}` }] }]
-        })
-      });
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        }
+      );
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
       setMessages(prev => [...prev, { role: "assistant", content: text }]);
@@ -198,7 +208,7 @@ export default function HomePage() {
           <h3 className="font-semibold mb-3">Chat</h3>
           <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto">
             {messages.map((msg, i) => (
-              <div key={i} className={`p-2 rounded-xl ${msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5"}`}>
+              <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}>
                 <p className="text-sm">{msg.content}</p>
               </div>
             ))}
@@ -222,7 +232,7 @@ export default function HomePage() {
               <label className="block text-sm font-medium mb-2">Google AI API Key</label>
               <div className="flex gap-2">
                 <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={(e) => { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
-                <button onClick={() => setShowApiKey(!showApiKey)} className="w-12 h-12 bg-white/5 rounded-xl">
+                <button onClick={() => setShowApiKey(!showApiKey)} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
@@ -237,16 +247,16 @@ export default function HomePage() {
 
       {/* Mobile Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 glass-card border-t-0 rounded-t-3xl p-2 flex justify-around lg:hidden">
-        <button onClick={() => setActiveTab("dashboard")} className={`p-3 ${activeTab === "dashboard" ? "gold-accent" : "text-gray-400"}`}>
+        <button onClick={() => setActiveTab("dashboard")} className={"p-3 " + (activeTab === "dashboard" ? "gold-accent" : "text-gray-400")}>
           <Home className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("agents")} className={`p-3 ${activeTab === "agents" ? "gold-accent" : "text-gray-400"}`}>
+        <button onClick={() => setActiveTab("agents")} className={"p-3 " + (activeTab === "agents" ? "gold-accent" : "text-gray-400")}>
           <Users className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("chat")} className={`p-3 ${activeTab === "chat" ? "gold-accent" : "text-gray-400"}`}>
+        <button onClick={() => setActiveTab("chat")} className={"p-3 " + (activeTab === "chat" ? "gold-accent" : "text-gray-400")}>
           <MessageSquare className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("settings")} className={`p-3 ${activeTab === "settings" ? "gold-accent" : "text-gray-400"}`}>
+        <button onClick={() => setActiveTab("settings")} className={"p-3 " + (activeTab === "settings" ? "gold-accent" : "text-gray-400")}>
           <Settings className="w-6 h-6" />
         </button>
       </nav>
