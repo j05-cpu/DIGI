@@ -2,15 +2,8 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Allow users to provide their own API key
-let userApiKey: string | null = null;
-
-export function setUserApiKey(apiKey: string) {
-  userApiKey = apiKey;
-}
-
 function getApiKey(): string {
-  return userApiKey || process.env.GOOGLE_AI_API_KEY || "";
+  return process.env.GOOGLE_AI_API_KEY || "";
 }
 
 export async function runAgentTask(prompt: string, apiKey?: string): Promise<string> {
