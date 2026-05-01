@@ -7,7 +7,6 @@ import {
   Loader2, Play, Eye, EyeOff, Sparkles, Send
 } from "lucide-react";
 
-// 30 Professional Agents
 const AGENTS_REGISTRY = [
   { id: 1, name: "Data Analyst Pro", role: "Analyze datasets", category: "Data" },
   { id: 2, name: "Content Writer", role: "Create content", category: "Content" },
@@ -71,21 +70,21 @@ export default function HomePage() {
     setProcessingAgent(agentId);
     setActiveAgents(prev => [...prev, agentId]);
 
-    const prompt = "Launch agent " + agentId + ". Execute task and respond with confirmation.";
+    var prompt = "Launch agent " + agentId + ". Execute task and respond with confirmation.";
 
     try {
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
-        }
-      );
-      const data = await response.json();
-      const result = data.candidates?.[0]?.content?.parts?.[0]?.text || "Agent launched!";
+      var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+      var body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      });
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      });
+      var data = await response.json();
+      var result = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) ? data.candidates[0].content.parts[0].text : "Agent launched!";
       setMessages(prev => [...prev, { role: "assistant", content: "[Agent " + agentId + "] " + result }]);
     } catch (e: any) {
       setMessages(prev => [...prev, { role: "assistant", content: "Agent " + agentId + " launched (simulation mode)" }]);
@@ -100,21 +99,21 @@ export default function HomePage() {
     setInput("");
     setIsLoading(true);
 
-    const prompt = "You are Digital Godfather OS. Respond professionally. User: " + input;
+    var prompt = "You are Digital Godfather OS. Respond professionally. User: " + input;
 
     try {
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
-        }
-      );
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+      var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+      var body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      });
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      });
+      var data = await response.json();
+      var text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) ? data.candidates[0].content.parts[0].text : "No response";
       setMessages(prev => [...prev, { role: "assistant", content: text }]);
     } catch (e) {
       setMessages(prev => [...prev, { role: "assistant", content: "Error sending message" }]);
@@ -125,7 +124,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
-      {/* Header */}
       <header className="glass-card mb-4 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
@@ -133,15 +131,13 @@ export default function HomePage() {
           </div>
           <div>
             <h1 className="text-lg font-bold gold-gradient">Digital Godfather</h1>
-            <p className="text-xs text-gray-400">{keySaved ? "🟢 Connected" : "🔴 No API Key"}</p>
+            <p className="text-xs text-gray-400">{keySaved ? "Connected" : "No API Key"}</p>
           </div>
         </div>
       </header>
 
-      {/* Dashboard Tab */}
       {activeTab === "dashboard" && (
         <>
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mb-4">
             <motion.div className="glass-card p-4 text-center">
               <Brain className="w-6 h-6 mx-auto mb-2 gold-accent" />
@@ -160,7 +156,6 @@ export default function HomePage() {
             </motion.div>
           </div>
 
-          {/* Quick Actions */}
           <div className="glass-card p-4">
             <h3 className="font-semibold mb-3">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -177,45 +172,47 @@ export default function HomePage() {
         </>
       )}
 
-      {/* Agents Tab */}
       {activeTab === "agents" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Agent Registry ({AGENTS_REGISTRY.length} Agents)</h3>
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {AGENTS_REGISTRY.map((agent) => (
-              <div key={agent.id} className="glass-card-hover p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{agent.name}</p>
-                  <p className="text-xs text-gray-400">{agent.role} • {agent.category}</p>
+            {AGENTS_REGISTRY.map(function(agent) {
+              return (
+                <div key={agent.id} className="glass-card-hover p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{agent.name}</p>
+                    <p className="text-xs text-gray-400">{agent.role} - {agent.category}</p>
+                  </div>
+                  <button
+                    onClick={() => launchAgent(agent.id)}
+                    disabled={processingAgent === agent.id || !apiKey}
+                    className="btn-primary text-sm flex items-center gap-2"
+                  >
+                    {processingAgent === agent.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Launch
+                  </button>
                 </div>
-                <button
-                  onClick={() => launchAgent(agent.id)}
-                  disabled={processingAgent === agent.id || !apiKey}
-                  className="btn-primary text-sm flex items-center gap-2"
-                >
-                  {processingAgent === agent.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                  Launch
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Chat Tab */}
       {activeTab === "chat" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Chat</h3>
           <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto">
-            {messages.map((msg, i) => (
-              <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}>
-                <p className="text-sm">{msg.content}</p>
-              </div>
-            ))}
+            {messages.map(function(msg, i) {
+              return (
+                <div key={i} className={"p-2 rounded-xl " + (msg.role === "user" ? "bg-white/10 text-right" : "bg-white/5")}>
+                  <p className="text-sm">{msg.content}</p>
+                </div>
+              );
+            })}
             {isLoading && <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Processing...</span></div>}
           </div>
           <div className="flex gap-2">
-            <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!apiKey} />
+            <input value={input} onChange={function(e) { setInput(e.target.value); }} placeholder={apiKey ? "Message..." : "Set API key first"} className="flex-1 text-sm" disabled={!apiKey} />
             <button onClick={sendMessage} disabled={!input.trim() || isLoading || !apiKey} className="btn-primary">
               <Send className="w-5 h-5" />
             </button>
@@ -223,7 +220,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Settings Tab */}
       {activeTab === "settings" && (
         <div className="glass-card p-4">
           <h3 className="font-semibold mb-3">Settings</h3>
@@ -231,32 +227,31 @@ export default function HomePage() {
             <div>
               <label className="block text-sm font-medium mb-2">Google AI API Key</label>
               <div className="flex gap-2">
-                <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={(e) => { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
-                <button onClick={() => setShowApiKey(!showApiKey)} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
+                <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={function(e) { setApiKey(e.target.value); setKeySaved(false); }} placeholder="Enter API key..." className="flex-1 text-sm" />
+                <button onClick={function() { setShowApiKey(!showApiKey); }} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center">
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               <a href="https://aistudio.google.com/apikey" target="_blank" className="text-xs text-blue-400 mt-2 block">Get free API key</a>
               <button onClick={handleSaveApiKey} disabled={!apiKey.trim()} className="btn-primary w-full mt-3">
-                {keySaved ? "✓ Saved" : "Save Key"}
+                {keySaved ? "Saved" : "Save Key"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Mobile Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 glass-card border-t-0 rounded-t-3xl p-2 flex justify-around lg:hidden">
-        <button onClick={() => setActiveTab("dashboard")} className={"p-3 " + (activeTab === "dashboard" ? "gold-accent" : "text-gray-400")}>
+        <button onClick={function() { setActiveTab("dashboard"); }} className={"p-3 " + (activeTab === "dashboard" ? "gold-accent" : "text-gray-400")}>
           <Home className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("agents")} className={"p-3 " + (activeTab === "agents" ? "gold-accent" : "text-gray-400")}>
+        <button onClick={function() { setActiveTab("agents"); }} className={"p-3 " + (activeTab === "agents" ? "gold-accent" : "text-gray-400")}>
           <Users className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("chat")} className={"p-3 " + (activeTab === "chat" ? "gold-accent" : "text-gray-400")}>
+        <button onClick={function() { setActiveTab("chat"); }} className={"p-3 " + (activeTab === "chat" ? "gold-accent" : "text-gray-400")}>
           <MessageSquare className="w-6 h-6" />
         </button>
-        <button onClick={() => setActiveTab("settings")} className={"p-3 " + (activeTab === "settings" ? "gold-accent" : "text-gray-400")}>
+        <button onClick={function() { setActiveTab("settings"); }} className={"p-3 " + (activeTab === "settings" ? "gold-accent" : "text-gray-400")}>
           <Settings className="w-6 h-6" />
         </button>
       </nav>
